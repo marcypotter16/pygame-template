@@ -7,11 +7,11 @@ On Windows you can simply install it via `pip install pygame` in a Command Promp
 Create a file in the "States" folder, write a class that extends State, look "BlankState" for an easy example.
 You can attach UI elements to the state just by creating them as members of the class.
 
-Every entity in the game has two important methods:
+Every entity in the game should have two important methods:
 * `update(self, dt: float)`
 * `render(self, surface: pygame.Surface)`
   
-and a property `game`, which is useful for many reasons.
+and a property `game`, which is useful for many reasons like key handling and font methods.
 
 For example I can create a class Circle
 ```python
@@ -61,3 +61,5 @@ g.load_state(SomeState(g))
 g.game_loop()
 
 ```
+
+To draw text on the screen you can use the `draw_text` and `draw_centered_text` functions in Utils/Text.py
