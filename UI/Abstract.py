@@ -15,6 +15,9 @@ class UICanvas:
         self.children: list[UIContainer] = []
         self.visible = True
 
+    def add_child(self, child):
+        self.children.append(child)
+
     def render(self, surface: pygame.Surface):
         for child in self.children:
             child.render(surface)

@@ -94,7 +94,6 @@ class Game:
                     if event.key == p.K_a:
                         self.actions['left'] = 1
                     if event.key == p.K_d:
-                        print('RIGHT!!')
                         self.actions['right'] = 1
                     if event.key == p.K_s:
                         self.actions['down'] = 1
@@ -171,6 +170,9 @@ class Game:
         pass
         # self.title_screen = Title(self)
         # self.state_stack.push(self.title_screen)
+
+    def load_state(self, state):
+        self.state_stack.push(state)
 
     def load_map(self):
         pass
