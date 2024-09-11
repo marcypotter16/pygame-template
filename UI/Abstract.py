@@ -73,7 +73,8 @@ class UIContainer(UICanvas):
         vertical_scaling_factor = float(rect.height) / self.height
         self.x, self.y, self.width, self.height = rect.x, rect.y, rect.width, rect.height
         for child in self.children:
-            child.x = self.x + round(horizontal_scaling_factor * (child.x - px))
+            child.x = self.x + \
+                round(horizontal_scaling_factor * (child.x - px))
             child.y = self.y + round(vertical_scaling_factor * (child.y - py))
             child.height = round(child.height * vertical_scaling_factor)
             child.width = round(child.width * horizontal_scaling_factor)
@@ -97,7 +98,8 @@ class UIElement(UIContainer):
     def __init__(self, parent: UICanvas = None, x=0, y=0, center=None, width=100, height=100,
                  bg_color: tuple | str = (40, 40, 40),
                  fg_color=(0, 0, 0), text: str = "", corner_radius=10):
-        super().__init__(parent, x, y, center, width, height, bg_color, fg_color, corner_radius)
+        super().__init__(parent, x, y, center, width,
+                         height, bg_color, fg_color, corner_radius)
 
         self.clickable: bool = False
         self.text = text
@@ -118,17 +120,20 @@ class UIElement(UIContainer):
         s = side.lower()
         if s == "vert":
             # Not very stonks
-            self.parent.height = sum(child.height + pady for child in self.parent.children) + pady
+            self.parent.height = sum(
+                child.height + pady for child in self.parent.children) + pady
             self.x = self.parent.x + padx
             self.width = self.parent.width - 2 * padx
             if len(self.parent.children) > 1:
-                self.y = max(child.y for child in self.parent.children) + pady + self.height
+                self.y = max(
+                    child.y for child in self.parent.children) + pady + self.height
             else:
                 self.y = self.parent.y + pady
 
         elif s == "horiz":
             # Not very stonks
-            self.parent.width = sum(child.width + padx for child in self.parent.children) + padx
+            self.parent.width = sum(
+                child.width + padx for child in self.parent.children) + padx
             self.y = self.parent.y + pady
             self.height = self.parent.height - 2 * pady
             if len(self.parent.children) > 1:
@@ -137,7 +142,8 @@ class UIElement(UIContainer):
                 self.x = self.parent.x + padx
 
         self.rect.update(self.x, self.y, self.width, self.height)
-        self.parent.rect.update(self.parent.x, self.parent.y, self.parent.width, self.parent.height)
+        self.parent.rect.update(
+            self.parent.x, self.parent.y, self.parent.width, self.parent.height)
 
     def render(self, surface: pygame.Surface):
         super().render(surface)
@@ -147,4 +153,4 @@ class UIElement(UIContainer):
             ui_element.update(dt)
 
     def __str__(self):
-        return f"{self.x}, {self.y}, {self.width}, {self.height}"
+        return f"{self.x}, {self.y}, {self.width}, {self.height}\nChildren: {len(self.children)}"
