@@ -1,6 +1,6 @@
 from Game import Game
-from States.LobbyState import LobbyState
+from States.BlankState import BlankState
 
 g: Game = Game()
-g.load_state(LobbyState(g))
+g.load_state(BlankState(g))
 g.game_loop()
