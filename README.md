@@ -2,6 +2,8 @@
 
 ## Quickstart
 
+On Windows you can simply install it via `pip install pygame` in a Command Prompt.
+
 Create a file in the "States" folder, write a class that extends State, look "BlankState" for an easy example.
 You can attach UI elements to the state just by creating them as members of the class.
 
