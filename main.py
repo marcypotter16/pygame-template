@@ -1,6 +1,6 @@
 from Game import Game
-from States.BlankState import BlankState
+from States.BezierTestState import BezierTestState
 
 g: Game = Game()
-g.load_state(BlankState(g))
+g.load_state(BezierTestState(g))
 g.game_loop()
