@@ -48,3 +48,6 @@ class Stack:
         :return:
         """
         return self.__size
+    
+    def __str__(self):
+        return str(self.stack)

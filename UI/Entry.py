@@ -12,10 +12,11 @@ ALLOWED_SPECIAL_CHARS = [" ", ".", ",", "!", "?", ":", ";", "-", "_", "+", "=",
 
 class Entry(UIElement):
     def __init__(self, parent: UICanvas = None, x=0, y=0, center=None, width=100, height=100, bg_color: tuple | str = (50, 50, 50),
-                 fg_color=(0, 0, 0), placeholder: str = "", corner_radius=10, focus_color=(150, 150, 150), is_password=False):
+                 fg_color=(0, 0, 0), font=None, placeholder: str = "", border_width=1, corner_radius=10, focus_color=(150, 150, 150), is_password=False):
 
         super().__init__(parent, x, y, center, width, height,
-                         bg_color, fg_color, placeholder, corner_radius)
+                         bg_color, fg_color, font, placeholder, corner_radius)
+        self.border_width = border_width
         self.focused = False
         self.focus_color = focus_color
         self.original_fg_color = fg_color
@@ -34,7 +35,7 @@ class Entry(UIElement):
         if self.visible:
             super().render(surface)
             pygame.draw.rect(surface, self.fg_color, self.rect,
-                             width=3, border_radius=self.corner_radius)
+                             width=self.border_width, border_radius=self.corner_radius)
             text = '*'*len(self.text) if self.is_password else self.text
             draw_centered_text(self.font, surface, text,
                                self.fg_color, self.rect)
@@ -139,7 +140,6 @@ class Entry(UIElement):
     def _handle_backspace(self):
         if self.caret.index_in_text == 0:
             return
-        print("Caret index in text:", self.caret.index_in_text, "Text:", self.text)
         self.caret.remove_char(self.text[self.caret.index_in_text - 1])
         aux_text = list(self.text)
         aux_text.pop(self.caret.index_in_text)
@@ -177,6 +177,48 @@ class Entry(UIElement):
         self.caret.shift_char_right(self.text[self.caret.index_in_text])
         self.key_pressed = pygame.K_RIGHT
 
+
+class Paragraph(Entry):
+    def __init__(self, parent: UICanvas = None, x=0, y=0, center=None, width=100, height=100, bg_color: tuple | str = (50, 50, 50),
+                 fg_color=(0, 0, 0), font=None, placeholder: str = "", border_width=1, corner_radius=10, focus_color=(150, 150, 150), is_password=False):
+        super().__init__(parent, x, y, center, width, height, bg_color, fg_color,
+                         font, placeholder, border_width, corner_radius, focus_color, is_password)
+        
+        self.lines = ["" for _ in range(height // self.font.get_height())]
+        self.line_index = 0
+        self.line_height = self.font.get_height()
+        
+    def _handle_printable(self, char):
+        txt = self.lines[self.line_index]
+        if self.font.size(txt)[0] <= self.width - 40:
+            aux_text = list(txt)
+            aux_text.insert(self.caret.index_in_text, char)
+            self.lines[self.line_index] = "".join(aux_text)
+            print(self.lines)
+            self.caret.add_char(char)
+            self.key_pressed = char
+        else:
+            self.caret.reset_position()
+            self.text += "\n"
+            self.caret.move_by(0, self.line_height * (self.line_index + 1))
+            self.line_index += 1
+
+    def _handle_backspace(self):
+        # TODO
+        pass
+
+    def get_text(self):
+        return "\n".join(l for l in self.lines if l != "")
+
+
+    def render(self, surface: pygame.Surface):
+        if self.visible:
+            pygame.draw.rect(surface, self.bg_color, self.rect, width=self.border_width, border_radius=self.corner_radius)
+            self.caret.render(surface)
+            for i, line in enumerate(self.lines):
+                draw_centered_text(self.font, surface, line, self.fg_color,
+                                   pygame.Rect(self.rect.x, self.rect.y + i * self.line_height, self.rect.width, self.line_height))
+
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -184,6 +226,7 @@ class Caret:
     def __init__(self, game: Game, parent: Entry):
         self.game = game
         self.parent = parent
+        self.font = self.parent.font
         self.reset_position()
         self.timer = Timer()
         self.visible = True
@@ -196,6 +239,7 @@ class Caret:
 
         self.hiding = False
 
+
         # abc|defg <- index_in_text = 3
         # |abcdefg <- index_in_text = 0
         # abcdefg| <- index_in_text = 7 = len(text)
@@ -204,13 +248,15 @@ class Caret:
         # ab|defg <- index_in_text = 1
 
     def reset_position(self):
-        self.offset = pygame.Vector2((self.parent.rect.width * .5 + self.parent.font.size(
-            self.parent.text)[0] * .5, (self.parent.rect.height - self.parent.font.get_height()) // 2 - 3))
+        # self.offset = pygame.Vector2((self.parent.rect.width * .5 + self.parent.font.size(
+        #     self.parent.text)[0] * .5, (self.parent.rect.height - self.parent.font.get_height()) // 2 - 3))
+        self.offset = pygame.Vector2((self.parent.rect.width * .5 + self.font.size(
+            self.parent.text)[0] * .5, (self.parent.rect.h - self.font.get_height()) * .5 - 3))
+
         self.topleft: pygame.Vector2 = self.parent.rect.topleft + self.offset
         self.rect = pygame.Rect(
             self.topleft, (2, self.parent.font.get_height() + 6))
         self.index_in_text = len(self.parent.text)
-        print("Caret position RESET:", self.topleft, self.index_in_text)
 
     def add_char(self, char):
         self.topleft += pygame.Vector2(self.parent.font.size(char)[0] * .5, 0)
@@ -250,6 +296,14 @@ class Caret:
         if self.visible and self.parent.focused:
             # pygame.draw.rect(surface, self.parent.fg_color, self.rect, width=3)
             pygame.draw.rect(surface, self.color, self.rect, width=3)
+
+    def move_to(self, x, y):
+        self.topleft = pygame.Vector2(x, y)
+        self.rect.topleft = self.topleft
+
+    def move_by(self, dx, dy):
+        self.topleft += pygame.Vector2(dx, dy)
+        self.rect.topleft = self.topleft
 
     def toggle_visibility(self):
         self.visible = not self.visible

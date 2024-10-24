@@ -4,19 +4,21 @@ from pygame import Rect
 from Generic.Stack import Stack
 from UI.Abstract import UICanvas
 from Utils.Text import draw_centered_text
+from Utils.Colors import BLACK
 
 
 class State:
     def __init__(self, game, msg=None, layer="foreground"):
         self.game = game
         self.canvas: UICanvas = UICanvas(game)
+        self.bg_color = BLACK
         self.render_stack = Stack()
         self.prev_state = None
         self.msg = msg
         self.layer = layer
 
     def render(self, surface: pygame.Surface):
-        surface.fill((0, 0, 0))
+        surface.fill(self.bg_color)
         self.canvas.render(surface)
         if self.msg is not None:
             draw_centered_text(self.game.font_big, surface, self.msg, (255, 255, 255), rect=Rect(
@@ -27,12 +29,14 @@ class State:
         self.canvas.update(delta_time)
 
     def enter_state(self):
+        """Aggiunge lo stato allo stack di stati del gioco"""
         if self.game.state_stack.size() > 1:
             self.prev_state = self.game.state_stack.top()  # ossia l'ultimo elemento dello stack di stati
         self.game.state_stack.push(self)
         self.game.render_stack[self.layer].append(self.render)
 
     def exit_state(self):
+        """Rimuove lo stato dallo stack di stati del gioco"""
         self.game.state_stack.pop()
 
     def change_layer(self, layer):

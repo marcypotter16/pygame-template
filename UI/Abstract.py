@@ -14,22 +14,38 @@ class UICanvas:
         self.rect = None
         self.children: list[UIContainer] = []
         self.visible = True
+        self.interactable = True
 
     def add_child(self, child):
+        if child.parent is not None:
+            child.parent.children.remove(child)
         self.children.append(child)
+        child.parent = self
 
     def render(self, surface: pygame.Surface):
-        for child in self.children:
-            child.render(surface)
+        if self.visible:
+            for child in self.children:
+                child.render(surface)
 
     def update(self, dt):
-        for ui_element in self.children:
-            ui_element.update(dt)
+        if self.visible and self.interactable:
+            for ui_element in self.children:
+                ui_element.update(dt)
+
+    def toggle_visibility(self):
+        self.visible = not self.visible
+        for child in self.children:
+            child.visible = not child.visible
+
+    def toggle_interactable(self):
+        self.interactable = not self.interactable
+        for child in self.children:
+            child.interactable = not child.interactable
 
 
 class UIContainer(UICanvas):
-    def __init__(self, parent: UICanvas, x=0, y=0, center: tuple[int, int] = None, width=100, height=100,
-                 bg_color: tuple | str = (40, 40, 40), fg_color=(0, 0, 0), corner_radius=10):
+    def __init__(self, parent: UICanvas, x=0, y=0, center: tuple[int, int] = None, width=None, height=None,
+                 bg_color: tuple | str = (40, 40, 40), fg_color=(0, 0, 0), font: pygame.font.Font | None = None, corner_radius=10, border_width=0):
         """
         Container for GUI
         :param parent: the parent, usually a UICanvas
@@ -42,29 +58,27 @@ class UIContainer(UICanvas):
         :param fg_color: foreground colour (text)
         :param corner_radius: corner radius for smoothed rectangles
         """
+        super().__init__(parent.game)
+        self.font = font if font is not None else self.game.font_medium
+        self.children: list[UIContainer] = []
+
+        self.parent = parent
+
+        self.parent.children.append(self)
+
         self.x = x
         self.y = y
         if center is not None:
             self.x, self.y = center[0] - width / 2, center[1] - height / 2
-        self.width = width
-        self.height = height
-        self.rect = pygame.rect.Rect(self.x, self.y, width, height)
+        self.width, self.height = width if width is not None else 1, height if height is not None else 1
+        self.rect = pygame.rect.Rect(self.x, self.y, self.width, self.height)
         if bg_color == "transparent":
             self.original_bg_color = self.bg_color = (0, 0, 0, 0)
         else:
             self.original_bg_color = self.bg_color = bg_color
         self.fg_color = fg_color
         self.corner_radius = corner_radius
-
-        self.children: list[UIContainer] = []
-
-        self.visible = True
-
-        self.parent = parent
-        self.game = self.parent.game
-        self.font = self.game.font_medium
-
-        self.parent.children.append(self)
+        self.border_width = border_width
 
     def rescale(self, rect: pygame.rect.Rect):
         px, py = self.x, self.y
@@ -85,28 +99,21 @@ class UIContainer(UICanvas):
         # surface.fill(self.original_bg_color, self.rect)
         if self.visible:
             # pygame.draw.rect(surface, self.bg_color, self.rect, border_radius=self.corner_radius)
-            Draw.draw_rect_alpha(surface, color=self.bg_color, rect=self.rect)
-        for child in self.children:
-            child.render(surface)
+            Draw.draw_rect_alpha(surface, 
+                                 color=self.bg_color,
+                                 rect=self.rect, 
+                                 corner_radius=self.corner_radius,
+                                 width=self.border_width
+                                 )
+            for child in self.children:
+                child.render(surface)
 
     def update(self, dt):
-        for ui_element in self.children:
-            ui_element.update(dt)
+        if self.visible:
+            for ui_element in self.children:
+                ui_element.update(dt)
 
-
-class UIElement(UIContainer):
-    def __init__(self, parent: UICanvas = None, x=0, y=0, center=None, width=100, height=100,
-                 bg_color: tuple | str = (40, 40, 40),
-                 fg_color=(0, 0, 0), text: str = "", corner_radius=10):
-        super().__init__(parent, x, y, center, width,
-                         height, bg_color, fg_color, corner_radius)
-
-        self.clickable: bool = False
-        self.text = text
-
-        self.game = self.parent.game
-
-    def pack(self, side: str, padx: int = 0, pady: int = 0):
+    def pack(self, side: str, padx: int = 0, pady: int = 0, modify_dimensions_to_fit=True):
         """
         Makes the children fit nicely inside the parent. Width or Height might get modified to fit in the frame.
         :param side: vert or horiz
@@ -117,16 +124,20 @@ class UIElement(UIContainer):
 
         # self.parent.width = max([child.width for child in self.parent.children]) + 2 * padx
 
+        # TODO: Rewrite this method, it's kinda garbage
+
         s = side.lower()
         if s == "vert":
             # Not very stonks
             self.parent.height = sum(
                 child.height + pady for child in self.parent.children) + pady
             self.x = self.parent.x + padx
-            self.width = self.parent.width - 2 * padx
+            if modify_dimensions_to_fit:
+                self.width = self.parent.width - 2 * padx
             if len(self.parent.children) > 1:
-                self.y = max(
-                    child.y for child in self.parent.children) + pady + self.height
+                # This now should work fine
+                last_child = self.parent.children[-2] # -1 is the current element
+                self.y = last_child.y + last_child.height + pady
             else:
                 self.y = self.parent.y + pady
 
@@ -135,7 +146,8 @@ class UIElement(UIContainer):
             self.parent.width = sum(
                 child.width + padx for child in self.parent.children) + padx
             self.y = self.parent.y + pady
-            self.height = self.parent.height - 2 * pady
+            if modify_dimensions_to_fit:
+                self.height = self.parent.height - 2 * pady
             if len(self.parent.children) > 1:
                 self.x = self.parent.children[0].x + padx + self.width
             else:
@@ -144,13 +156,31 @@ class UIElement(UIContainer):
         self.rect.update(self.x, self.y, self.width, self.height)
         self.parent.rect.update(
             self.parent.x, self.parent.y, self.parent.width, self.parent.height)
+        
+    def clear(self):
+        self.children.clear()
+
+
+class UIElement(UIContainer):
+    def __init__(self, parent: UICanvas = None, x=0, y=0, center=None, width=None, height=None,
+                 bg_color: tuple | str = (40, 40, 40),
+                 fg_color=(0, 0, 0), font: pygame.font.Font | None = None, text: str = "", corner_radius=10):
+        super().__init__(parent, x, y, center, width,
+                         height, bg_color, fg_color, font, corner_radius)
+
+        self.clickable: bool = False
+        self.text = text
+
+        self.game = self.parent.game
 
     def render(self, surface: pygame.Surface):
         super().render(surface)
 
     def update(self, dt):
-        for ui_element in self.children:
-            ui_element.update(dt)
+        if self.visible:
+            super().update(dt)
+            for ui_element in self.children:
+                ui_element.update(dt)
 
     def __str__(self):
         return f"{self.x}, {self.y}, {self.width}, {self.height}\nChildren: {len(self.children)}"

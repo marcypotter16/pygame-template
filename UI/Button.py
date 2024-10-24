@@ -16,13 +16,15 @@ class TextButton(UIElement):
         bg_color: tuple | str = (50, 50, 50),
         fg_color=(0, 0, 0),
         text: str = "",
+        font: pygame.font.Font | None = None,
         corner_radius=10,
         command=lambda: print("Clicked"),
         hover_color=(150, 150, 150),
     ):
         super().__init__(
-            parent, x, y, center, width, height, bg_color, fg_color, text, corner_radius
+            parent, x, y, center, width, height, bg_color, fg_color, font, text, corner_radius
         )
+        self.font = self.game.font_medium if font is None else font
         self.hover_color = hover_color
         self.height = self.font.get_height() + 10
         self.command = None
@@ -46,7 +48,6 @@ class TextButton(UIElement):
         self.bg_color = self.original_bg_color
 
     def clicked(self):
-        print("Clicked:", self.text)
         if self.command is not None:
             self.command.__call__()
 
@@ -74,6 +75,7 @@ class ImageButton(TextButton):
         bg_color: tuple | str = "transparent",
         fg_color=(0, 0, 0),
         text: str = "",
+        font: pygame.font.Font | None = None,
         corner_radius=10,
         command=lambda: print("Clicked"),
         hover_color=(150, 150, 150),
@@ -92,6 +94,7 @@ class ImageButton(TextButton):
             bg_color,
             fg_color,
             text,
+            font,
             corner_radius,
             command,
             hover_color,
@@ -124,6 +127,8 @@ class ImageButton(TextButton):
                 self.command.__call__()
             else:
                 self.hover(dt)
+        else:
+            self.unhover()
         if self.game.clicked_sx == -1 and not self.rect.collidepoint(
             self.game.mousepos
         ):
@@ -138,6 +143,7 @@ class ImageButton(TextButton):
             ) % self.animation_list_length
             self.current_image = self.animation[self.current_image_index]
             self.prev_timestamp = 0
+        self.bg_color = self.hover_color
         # if self.game.clicked_sx == -1:
         #     self.command.__call__()
 
@@ -147,6 +153,7 @@ class ImageButton(TextButton):
         :return:
         """
         self.current_image_index = 0
+        self.bg_color = self.original_bg_color
 
     def render(self, surface: pygame.Surface):
         if self.visible:
